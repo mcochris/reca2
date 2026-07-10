@@ -54,6 +54,4 @@ jobs:
         uses: actions/upload-artifact@v6
         with:
           name: windows-installers
-          path: |
-            src-tauri/target/release/bundle/nsis/*.exe
-            src-tauri/target/release/bundle/msi/*.msi
+          path: src-tauri/target/release/bundle/nsis/*.exe
