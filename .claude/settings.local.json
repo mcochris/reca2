@@ -1,0 +1,14 @@
+{
+  "permissions": {
+    "allow": [
+      "Bash(curl -s \"https://raw.githubusercontent.com/tauri-apps/tauri/tauri-v2.9.0/crates/tauri/src/webview/mod.rs\" -o /tmp/webview_mod.rs)",
+      "Read(//tmp/**)",
+      "Bash(curl -s \"https://raw.githubusercontent.com/tauri-apps/tauri-docs/v2/src/content/docs/develop/debug/linux-graphics.mdx\")",
+      "WebSearch",
+      "Bash(curl -s \"https://api.github.com/repos/tauri-apps/tauri/contents/crates/tauri/src/manager?ref=tauri-v2.9.0\")",
+      "Bash(python3 -c \"import json,sys; [print\\(x['name']\\) for x in json.load\\(sys.stdin\\)]\")",
+      "Bash(curl -s \"https://raw.githubusercontent.com/tauri-apps/tauri/tauri-v2.9.0/crates/tauri/src/manager/webview.rs\" -o /tmp/manager_webview.rs)",
+      "Bash(curl -s \"https://raw.githubusercontent.com/tauri-apps/tauri/tauri-v2.9.0/crates/tauri-runtime-wry/src/lib.rs\" -o /tmp/rtwry.rs)"
+    ]
+  }
+}
