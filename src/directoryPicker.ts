@@ -77,7 +77,12 @@ export async function selectMusicFiles(musicExtensions: string[]): Promise<strin
 			resolve(collectAll());
 		};
 
-		function renderNode(parentEl: HTMLElement, name: string, path: string, isDir: boolean) {
+		function renderNode(
+			parentEl: HTMLElement,
+			name: string,
+			path: string,
+			isDir: boolean,
+		): { setChecked: (checked: boolean) => Promise<void> } {
 			const li = document.createElement("li");
 			li.className = "dp-node";
 
@@ -87,6 +92,7 @@ export async function selectMusicFiles(musicExtensions: string[]): Promise<strin
 			let childList: HTMLUListElement | null = null;
 			let expanded = false;
 			let loaded = false;
+			let childNodes: { setChecked: (checked: boolean) => Promise<void> }[] = [];
 
 			let expandBtn: HTMLButtonElement | null = null;
 			if (isDir) {
@@ -114,23 +120,53 @@ export async function selectMusicFiles(musicExtensions: string[]): Promise<strin
 			li.appendChild(row);
 			parentEl.appendChild(li);
 
-			if (isDir) {
-				checkbox.onchange = async () => {
-					if (checkbox.checked) {
-						checkbox.disabled = true;
-						try {
-							const files = await invoke<string[]>("collect_music_files", {
-								path,
-								musicExtensions,
-							});
-							selectedByNode.set(path, files);
-						} finally {
-							checkbox.disabled = false;
-						}
+			// Applies `checked` to this node. For an expanded directory this cascades
+			// to every rendered child so their checkboxes and the collected file list
+			// stay in sync; for a not-yet-expanded directory it falls back to asking
+			// the backend to recursively collect the files under it.
+			async function setChecked(checked: boolean): Promise<void> {
+				checkbox.checked = checked;
+
+				if (!isDir) {
+					if (checked) {
+						selectedByNode.set(path, [path]);
 					} else {
 						selectedByNode.delete(path);
 					}
-				};
+					return;
+				}
+
+				if (loaded) {
+					checkbox.disabled = true;
+					try {
+						selectedByNode.delete(path);
+						for (const child of childNodes) {
+							await child.setChecked(checked);
+						}
+					} finally {
+						checkbox.disabled = false;
+					}
+					return;
+				}
+
+				if (checked) {
+					checkbox.disabled = true;
+					try {
+						const files = await invoke<string[]>("collect_music_files", {
+							path,
+							musicExtensions,
+						});
+						selectedByNode.set(path, files);
+					} finally {
+						checkbox.disabled = false;
+					}
+				} else {
+					selectedByNode.delete(path);
+				}
+			}
+
+			if (isDir) {
+				checkbox.onchange = () => setChecked(checkbox.checked);
 
 				expandBtn!.onclick = async () => {
 					if (!loaded) {
@@ -150,10 +186,10 @@ export async function selectMusicFiles(musicExtensions: string[]): Promise<strin
 						childList = document.createElement("ul");
 						childList.className = "dp-tree dp-nested";
 						for (const dir of listing.directories) {
-							renderNode(childList, dir.name, dir.path, true);
+							childNodes.push(renderNode(childList, dir.name, dir.path, true));
 						}
 						for (const file of listing.files) {
-							renderNode(childList, file.name, file.path, false);
+							childNodes.push(renderNode(childList, file.name, file.path, false));
 						}
 						li.appendChild(childList);
 
@@ -170,14 +206,10 @@ export async function selectMusicFiles(musicExtensions: string[]): Promise<strin
 					if (childList) childList.style.display = expanded ? "block" : "none";
 				};
 			} else {
-				checkbox.onchange = () => {
-					if (checkbox.checked) {
-						selectedByNode.set(path, [path]);
-					} else {
-						selectedByNode.delete(path);
-					}
-				};
+				checkbox.onchange = () => setChecked(checkbox.checked);
 			}
+
+			return { setChecked };
 		}
 
 		for (const dirPath of topLevelDirs) {
